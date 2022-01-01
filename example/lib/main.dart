@@ -82,7 +82,14 @@ class _MyHomePageState extends State<MyHomePage> {
           // axis because Columns are vertical (the cross axis would be
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[MultiInAppWebView()],
+          children: <Widget>[
+            MultiInAppWebView(
+              initialUrl: 'https://mall.lookingpet.com/',
+              shouldOpenNewWindow: (url) {
+                return true;
+              },
+            )
+          ],
         ),
       ),
     );

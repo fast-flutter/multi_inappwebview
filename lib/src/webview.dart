@@ -3,11 +3,21 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 class MultiInAppWebView extends StatefulWidget {
-  String initUrl;
+  final String initialUrl;
+  final int maxNewWindow;
   InAppWebViewGroupOptions options = InAppWebViewGroupOptions();
 
+  Future<NavigationActionPolicy?> Function(
+          InAppWebViewController controller, NavigationAction navigationAction)?
+      shouldOverrideUrlLoading;
+
+  bool Function(String url)? shouldOpenNewWindow;
+
   MultiInAppWebView(
-      {this.initUrl = 'https://mall.lookingpet.com/',
+      {required this.initialUrl,
+      this.shouldOverrideUrlLoading,
+      this.shouldOpenNewWindow,
+      this.maxNewWindow = 2,
       InAppWebViewGroupOptions? options,
       Key? key})
       : super(key: key);
@@ -17,29 +27,49 @@ class MultiInAppWebView extends StatefulWidget {
 }
 
 class _MultiInAppWebviewState extends State<MultiInAppWebView> {
-  String initUrl = '';
-
   List<InAppWebView> _inAppWebViews = [];
   List<InAppWebViewController> _inAppWebViewControllers = [];
   InAppWebView get _currnetWebView => _inAppWebViews.last;
   InAppWebViewController get _currnetWebViewController =>
       _inAppWebViewControllers.last;
 
-  InAppWebView _createNewWebView() {
-    return InAppWebView(
-      initialUrlRequest: URLRequest(url: Uri.tryParse(widget.initUrl)),
-      initialOptions: widget.options,
-      onWebViewCreated: (controller) => {
-        _inAppWebViewControllers.add(controller),
-      },
-    );
+  _createNewWebView(String newUrl) {
+    setState(() {
+      _inAppWebViews.add(InAppWebView(
+          initialUrlRequest: URLRequest(url: Uri.tryParse(newUrl)),
+          initialOptions: widget.options,
+          onWebViewCreated: (controller) => {
+                _inAppWebViewControllers.add(controller),
+              },
+          shouldOverrideUrlLoading: (controller, navigationAction) async {
+            String curUrl = (await controller.getUrl())?.toString() ?? '';
+
+            if (newUrl != curUrl) {
+              bool bShouldOpenNew = false;
+              if (widget.shouldOpenNewWindow != null) {
+                bShouldOpenNew = widget.shouldOpenNewWindow!(curUrl);
+
+                if (bShouldOpenNew == true &&
+                    _inAppWebViewControllers.length < widget.maxNewWindow) {
+                  print('@@@ shouldOpenNewWindow true : $newUrl');
+
+                  Future.microtask(() {
+                    _createNewWebView(newUrl);
+                  });
+
+                  return NavigationActionPolicy.CANCEL;
+                }
+              }
+            }
+          }));
+    });
   }
 
-  distroyLastWindow() {
+  _distroyLastWebView() {
     if (_inAppWebViews.length > 1) {
+      _currnetWebViewController.callAsyncJavaScript(
+          functionBody: "window.stop();");
       setState(() {
-        _currnetWebViewController.callAsyncJavaScript(
-            functionBody: "window.stop();");
         _inAppWebViews.removeLast();
         _inAppWebViewControllers.removeLast();
       });
@@ -54,7 +84,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
     widget.options.android.useHybridComposition = true;
     widget.options.ios.allowsLinkPreview = false;
 
-    _inAppWebViews.add(_createNewWebView());
+    _createNewWebView(widget.initialUrl);
     super.initState();
   }
 
@@ -67,7 +97,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
                 _currnetWebViewController.goBack();
                 return Future.value(false);
               } else if (_inAppWebViews.length > 1) {
-                distroyLastWindow();
+                _distroyLastWebView();
                 return Future.value(false);
               } else {
                 return Future.value(true);
