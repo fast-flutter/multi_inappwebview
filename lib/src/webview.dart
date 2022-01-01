@@ -11,13 +11,13 @@ class MultiInAppWebView extends StatefulWidget {
           InAppWebViewController controller, NavigationAction navigationAction)?
       shouldOverrideUrlLoading;
 
-  bool Function(String url)? shouldOpenNewWindow;
+  bool Function(Uri url)? shouldOpenNewWindow;
 
   MultiInAppWebView(
       {required this.initialUrl,
       this.shouldOverrideUrlLoading,
       this.shouldOpenNewWindow,
-      this.maxNewWindow = 2,
+      this.maxNewWindow = 3,
       InAppWebViewGroupOptions? options,
       Key? key})
       : super(key: key);
@@ -33,28 +33,29 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
   InAppWebViewController get _currnetWebViewController =>
       _inAppWebViewControllers.last;
 
-  _createNewWebView(String newUrl) {
+  _createNewWebView(String initUrl) {
     setState(() {
       _inAppWebViews.add(InAppWebView(
-          initialUrlRequest: URLRequest(url: Uri.tryParse(newUrl)),
+          initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
           initialOptions: widget.options,
           onWebViewCreated: (controller) => {
                 _inAppWebViewControllers.add(controller),
               },
           shouldOverrideUrlLoading: (controller, navigationAction) async {
-            String curUrl = (await controller.getUrl())?.toString() ?? '';
+            Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
+            Uri newUri = navigationAction.request.url!;
 
-            if (newUrl != curUrl) {
+            if (newUri != curUri) {
               bool bShouldOpenNew = false;
               if (widget.shouldOpenNewWindow != null) {
-                bShouldOpenNew = widget.shouldOpenNewWindow!(curUrl);
+                bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
 
                 if (bShouldOpenNew == true &&
                     _inAppWebViewControllers.length < widget.maxNewWindow) {
-                  print('@@@ shouldOpenNewWindow true : $newUrl');
+                  print('@@@ shouldOpenNewWindow true : ${newUri.toString()}');
 
                   Future.microtask(() {
-                    _createNewWebView(newUrl);
+                    _createNewWebView(newUri.toString());
                   });
 
                   return NavigationActionPolicy.CANCEL;

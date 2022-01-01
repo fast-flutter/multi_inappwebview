@@ -85,7 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             MultiInAppWebView(
               initialUrl: 'https://mall.lookingpet.com/',
-              shouldOpenNewWindow: (url) {
+              shouldOpenNewWindow: (uri) {
                 return true;
               },
             )
