@@ -44,36 +44,39 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
                 _inAppWebViewControllers.add(controller),
               },
           shouldOverrideUrlLoading: (controller, navigationAction) async {
-            Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
-            Uri newUri = navigationAction.request.url!;
+            NavigationActionPolicy? policy;
 
-            /// handle ios back to a emty page
-            // if (Platform.isIOS &&
-            //     navigationAction.iosWKNavigationType ==
-            //         IOSWKNavigationType.BACK_FORWARD) {
-            //   Future.microtask(() {
-            //     controller.goBack();
-            //   });
-            // }
+            if (widget.shouldOverrideUrlLoading != null) {
+              policy = await widget.shouldOverrideUrlLoading!(
+                  controller, navigationAction);
+            }
 
-            if (newUri != curUri &&
-                navigationAction.androidIsRedirect != true) {
-              bool bShouldOpenNew = false;
-              if (widget.shouldOpenNewWindow != null) {
-                bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
+            if (policy != NavigationActionPolicy.CANCEL) {
+              Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
+              Uri newUri = navigationAction.request.url!;
 
-                if (bShouldOpenNew == true &&
-                    _inAppWebViewControllers.length < widget.maxNewWindow) {
-                  print('@@@ shouldOpenNewWindow true : ${newUri.toString()}');
+              if (newUri != curUri &&
+                  navigationAction.androidIsRedirect != true) {
+                bool bShouldOpenNew = false;
+                if (widget.shouldOpenNewWindow != null) {
+                  bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
 
-                  Future.microtask(() {
-                    _createNewWebView(newUri.toString());
-                  });
+                  if (bShouldOpenNew == true &&
+                      _inAppWebViewControllers.length < widget.maxNewWindow) {
+                    print(
+                        '@@@ shouldOpenNewWindow true : ${newUri.toString()}');
 
-                  return NavigationActionPolicy.CANCEL;
+                    Future.microtask(() {
+                      _createNewWebView(newUri.toString());
+                    });
+
+                    policy = NavigationActionPolicy.CANCEL;
+                  }
                 }
               }
             }
+
+            return policy;
           }));
     });
   }
