@@ -1,8 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:multi_inappwebview/multi_inappwebview.dart';
 
 void main() {
   runApp(const MyApp());
+
+  // 启用安卓debug
+  if (Platform.isAndroid) {
+    AndroidInAppWebViewController.setWebContentsDebuggingEnabled(true);
+  }
 }
 
 class MyApp extends StatelessWidget {

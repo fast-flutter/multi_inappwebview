@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -45,7 +47,17 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
             Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
             Uri newUri = navigationAction.request.url!;
 
-            if (newUri != curUri) {
+            /// handle ios back to a emty page
+            // if (Platform.isIOS &&
+            //     navigationAction.iosWKNavigationType ==
+            //         IOSWKNavigationType.BACK_FORWARD) {
+            //   Future.microtask(() {
+            //     controller.goBack();
+            //   });
+            // }
+
+            if (newUri != curUri &&
+                navigationAction.androidIsRedirect != true) {
               bool bShouldOpenNew = false;
               if (widget.shouldOpenNewWindow != null) {
                 bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
