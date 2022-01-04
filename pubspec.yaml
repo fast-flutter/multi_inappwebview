@@ -1,7 +1,7 @@
 name: multi_inappwebview
-description: A simple multiple webview management.
+description: multiple webview of flutter_inappwebview
 version: 0.0.1
-homepage: www.lookingpet.com
+homepage: https://www.lookingpet.com
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
