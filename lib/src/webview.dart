@@ -9,9 +9,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-class MultiInAppWebView extends StatefulWidget {
+class MultiInAppWebView extends StatefulWidget implements WebView {
   final int maxNewWindow;
-  InAppWebViewController? _currentWebViewController;
+
+  ///The window id of a [CreateWindowAction.windowId].
+  final int? windowId;
 
   MultiInAppWebView({
     /// if you want to use new webview to open some url, return true
@@ -23,6 +25,7 @@ class MultiInAppWebView extends StatefulWidget {
     ///
     /// from flutter_inappwebview
     ///
+    this.windowId,
     this.initialUrlRequest,
     this.initialFile,
     this.initialData,
@@ -94,9 +97,6 @@ class MultiInAppWebView extends StatefulWidget {
 
   @override
   _MultiInAppWebviewState createState() => _MultiInAppWebviewState();
-
-  InAppWebViewController? get currentWebViewController =>
-      _currentWebViewController;
 
   bool Function(Uri url)? shouldOpenNewWindow;
 
@@ -391,7 +391,6 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
         },
         onWebViewCreated: (controller) => {
           _inAppWebViewControllers.add(controller),
-          widget._currentWebViewController = controller,
         },
         androidOnPermissionRequest: (
           InAppWebViewController controller,
@@ -539,7 +538,6 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
       setState(() {
         _inAppWebViews.removeLast();
         _inAppWebViewControllers.removeLast();
-        widget._currentWebViewController = _currnetWebViewController;
       });
     }
   }
