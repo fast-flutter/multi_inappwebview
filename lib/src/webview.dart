@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
 import 'package:fluttertoast/fluttertoast.dart';
 
 class MultiInAppWebView extends StatefulWidget implements WebView {
@@ -15,12 +16,17 @@ class MultiInAppWebView extends StatefulWidget implements WebView {
   ///The window id of a [CreateWindowAction.windowId].
   final int? windowId;
 
+  Widget? progressWidget;
+
   MultiInAppWebView({
     /// if you want to use new webview to open some url, return true
     required this.shouldOpenNewWindow,
 
     /// max number of new window
     this.maxNewWindow = 3,
+
+    /// custom progress widget
+    this.progressWidget,
 
     ///
     /// from flutter_inappwebview
@@ -374,6 +380,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
   InAppWebView get _currnetWebView => _inAppWebViews.last;
   InAppWebViewController get _currnetWebViewController =>
       _inAppWebViewControllers.last;
+  double loadingProgress = 0.0;
 
   _createNewWebView(String initUrl) {
     //force options
@@ -388,9 +395,14 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
         initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
         initialOptions: widget.initialOptions,
         onProgressChanged: (controller, progress) async {
+          print('progress: $progress');
+          setState(() {
+            loadingProgress = progress / 100;
+          });
+
           if (widget.onProgressChanged != null) {
             widget.onProgressChanged!(controller, progress);
-          } else {}
+          }
         },
         onWebViewCreated: (controller) => {
           _inAppWebViewControllers.add(controller),
@@ -455,13 +467,17 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
                 if (bShouldOpenNew == true &&
                     _inAppWebViewControllers.length < widget.maxNewWindow) {
-                  print('@@@ shouldOpenNewWindow true : ${newUri.toString()}');
+                  print(
+                      '@@@ MultiInAppWebView->shouldOpenNewWindow true : ${newUri.toString()}');
 
                   Future.microtask(() {
                     _createNewWebView(newUri.toString());
                   });
 
                   policy = NavigationActionPolicy.CANCEL;
+                } else {
+                  print(
+                      '@@@ MultiInAppWebView->shouldOpenNewWindow false : ${newUri.toString()}');
                 }
               }
             }
@@ -541,6 +557,8 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
       setState(() {
         _inAppWebViews.removeLast();
         _inAppWebViewControllers.removeLast();
+
+        loadingProgress = 0;
       });
     }
   }
@@ -568,8 +586,14 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
                 return Future.value(true);
               }
             },
-            child: Stack(
-              children: _inAppWebViews,
-            )));
+            child: Stack(children: [
+              Stack(
+                children: _inAppWebViews,
+              ),
+              Visibility(
+                  child: widget.progressWidget ??
+                      LinearProgressIndicator(value: loadingProgress),
+                  visible: (loadingProgress > 0 && loadingProgress < 0.9)),
+            ])));
   }
 }

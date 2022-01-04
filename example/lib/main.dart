@@ -91,10 +91,14 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             MultiInAppWebView(
+              maxNewWindow: 3,
               initialUrlRequest:
                   URLRequest(url: Uri.tryParse('https://mall.lookingpet.com/')),
               shouldOpenNewWindow: (uri) {
-                return true;
+                if (uri.host != 'mall.lookingpet.com') {
+                  return true;
+                }
+                return false;
               },
             )
           ],
