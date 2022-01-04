@@ -137,7 +137,7 @@ class MultiInAppWebView extends StatefulWidget implements WebView {
   final String? initialFile;
 
   @override
-  final InAppWebViewGroupOptions? initialOptions;
+  InAppWebViewGroupOptions? initialOptions;
 
   @override
   final URLRequest? initialUrlRequest;
@@ -379,11 +379,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
     setState(() {
       _inAppWebViews.add(InAppWebView(
         initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
-        initialOptions: widget.initialOptions ??
-            InAppWebViewGroupOptions(
-                crossPlatform: InAppWebViewOptions(),
-                android: AndroidInAppWebViewOptions(),
-                ios: IOSInAppWebViewOptions()),
+        initialOptions: widget.initialOptions,
         onProgressChanged: (controller, progress) async {
           if (widget.onProgressChanged != null) {
             widget.onProgressChanged!(controller, progress);
@@ -545,6 +541,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
   @override
   void initState() {
     //force options
+    widget.initialOptions ??= InAppWebViewGroupOptions();
     widget.initialOptions?.crossPlatform.useShouldOverrideUrlLoading = true;
     widget.initialOptions?.crossPlatform.javaScriptEnabled = true;
     widget.initialOptions?.android.useHybridComposition = true;
