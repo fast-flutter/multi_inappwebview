@@ -1,31 +1,371 @@
+import 'dart:collection';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class MultiInAppWebView extends StatefulWidget {
-  final String initialUrl;
   final int maxNewWindow;
-  InAppWebViewGroupOptions options = InAppWebViewGroupOptions();
+  InAppWebViewController? _currentWebViewController;
 
-  Future<NavigationActionPolicy?> Function(
-          InAppWebViewController controller, NavigationAction navigationAction)?
-      shouldOverrideUrlLoading;
+  MultiInAppWebView({
+    /// if you want to use new webview to open some url, return true
+    required this.shouldOpenNewWindow,
 
-  bool Function(Uri url)? shouldOpenNewWindow;
+    /// max number of new window
+    this.maxNewWindow = 3,
 
-  MultiInAppWebView(
-      {required this.initialUrl,
-      this.shouldOverrideUrlLoading,
-      this.shouldOpenNewWindow,
-      this.maxNewWindow = 3,
-      InAppWebViewGroupOptions? options,
-      Key? key})
-      : super(key: key);
+    ///
+    /// from flutter_inappwebview
+    ///
+    this.initialUrlRequest,
+    this.initialFile,
+    this.initialData,
+    this.initialOptions,
+    this.initialUserScripts,
+    this.pullToRefreshController,
+    this.contextMenu,
+    this.onWebViewCreated,
+    this.onLoadStart,
+    this.onLoadStop,
+    this.onLoadError,
+    this.onLoadHttpError,
+    this.onConsoleMessage,
+    this.onProgressChanged,
+    this.shouldOverrideUrlLoading,
+    this.onLoadResource,
+    this.onScrollChanged,
+    this.onDownloadStart,
+    this.onLoadResourceCustomScheme,
+    this.onCreateWindow,
+    this.onCloseWindow,
+    this.onJsAlert,
+    this.onJsConfirm,
+    this.onJsPrompt,
+    this.onReceivedHttpAuthRequest,
+    this.onReceivedServerTrustAuthRequest,
+    this.onReceivedClientCertRequest,
+    this.onFindResultReceived,
+    this.shouldInterceptAjaxRequest,
+    this.onAjaxReadyStateChange,
+    this.onAjaxProgress,
+    this.shouldInterceptFetchRequest,
+    this.onUpdateVisitedHistory,
+    this.onPrint,
+    this.onLongPressHitTestResult,
+    this.onEnterFullscreen,
+    this.onExitFullscreen,
+    this.onPageCommitVisible,
+    this.onTitleChanged,
+    this.onWindowFocus,
+    this.onWindowBlur,
+    this.onOverScrolled,
+    this.onZoomScaleChanged,
+    this.androidOnSafeBrowsingHit,
+    this.androidOnPermissionRequest,
+    this.androidOnGeolocationPermissionsShowPrompt,
+    this.androidOnGeolocationPermissionsHidePrompt,
+    this.androidShouldInterceptRequest,
+    this.androidOnRenderProcessGone,
+    this.androidOnRenderProcessResponsive,
+    this.androidOnRenderProcessUnresponsive,
+    this.androidOnFormResubmission,
+    @Deprecated('Use `onZoomScaleChanged` instead') this.androidOnScaleChanged,
+    this.androidOnReceivedIcon,
+    this.androidOnReceivedTouchIconUrl,
+    this.androidOnJsBeforeUnload,
+    this.androidOnReceivedLoginRequest,
+    this.iosOnWebContentProcessDidTerminate,
+    this.iosOnDidReceiveServerRedirectForProvisionalNavigation,
+    this.iosOnNavigationResponse,
+    this.iosShouldAllowDeprecatedTLS,
+    this.gestureRecognizers,
+    Key? key,
+  }) : super(key: key);
+
+  static of(BuildContext context, {bool root = false}) => root
+      ? context.findRootAncestorStateOfType<_MultiInAppWebviewState>()
+      : context.findAncestorStateOfType<_MultiInAppWebviewState>();
 
   @override
   _MultiInAppWebviewState createState() => _MultiInAppWebviewState();
+
+  InAppWebViewController? get currentWebViewController =>
+      _currentWebViewController;
+
+  bool Function(Uri url)? shouldOpenNewWindow;
+
+  /// `gestureRecognizers` specifies which gestures should be consumed by the WebView.
+  /// It is possible for other gesture recognizers to be competing with the web view on pointer
+  /// events, e.g if the web view is inside a [ListView] the [ListView] will want to handle
+  /// vertical drags. The web view will claim gestures that are recognized by any of the
+  /// recognizers on this list.
+  /// When `gestureRecognizers` is empty or null, the web view will only handle pointer events for gestures that
+  /// were not claimed by any other gesture recognizer.
+  final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
+
+  @override
+  final void Function(InAppWebViewController controller)?
+      androidOnGeolocationPermissionsHidePrompt;
+
+  @override
+  final Future<GeolocationPermissionShowPromptResponse?> Function(
+          InAppWebViewController controller, String origin)?
+      androidOnGeolocationPermissionsShowPrompt;
+
+  @override
+  final Future<PermissionRequestResponse?> Function(
+      InAppWebViewController controller,
+      String origin,
+      List<String> resources)? androidOnPermissionRequest;
+
+  @override
+  final Future<SafeBrowsingResponse?> Function(
+      InAppWebViewController controller,
+      Uri url,
+      SafeBrowsingThreat? threatType)? androidOnSafeBrowsingHit;
+
+  @override
+  final InAppWebViewInitialData? initialData;
+
+  @override
+  final String? initialFile;
+
+  @override
+  final InAppWebViewGroupOptions? initialOptions;
+
+  @override
+  final URLRequest? initialUrlRequest;
+
+  @override
+  final UnmodifiableListView<UserScript>? initialUserScripts;
+
+  @override
+  final PullToRefreshController? pullToRefreshController;
+
+  @override
+  final ContextMenu? contextMenu;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri? url)?
+      onPageCommitVisible;
+
+  @override
+  final void Function(InAppWebViewController controller, String? title)?
+      onTitleChanged;
+
+  @override
+  final void Function(InAppWebViewController controller)?
+      iosOnDidReceiveServerRedirectForProvisionalNavigation;
+
+  @override
+  final void Function(InAppWebViewController controller)?
+      iosOnWebContentProcessDidTerminate;
+
+  @override
+  final Future<IOSNavigationResponseAction?> Function(
+      InAppWebViewController controller,
+      IOSWKNavigationResponse navigationResponse)? iosOnNavigationResponse;
+
+  @override
+  final Future<IOSShouldAllowDeprecatedTLSAction?> Function(
+      InAppWebViewController controller,
+      URLAuthenticationChallenge challenge)? iosShouldAllowDeprecatedTLS;
+
+  @override
+  final Future<AjaxRequestAction> Function(
+          InAppWebViewController controller, AjaxRequest ajaxRequest)?
+      onAjaxProgress;
+
+  @override
+  final Future<AjaxRequestAction?> Function(
+          InAppWebViewController controller, AjaxRequest ajaxRequest)?
+      onAjaxReadyStateChange;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, ConsoleMessage consoleMessage)?
+      onConsoleMessage;
+
+  @override
+  final Future<bool?> Function(InAppWebViewController controller,
+      CreateWindowAction createWindowAction)? onCreateWindow;
+
+  @override
+  final void Function(InAppWebViewController controller)? onCloseWindow;
+
+  @override
+  final void Function(InAppWebViewController controller)? onWindowFocus;
+
+  @override
+  final void Function(InAppWebViewController controller)? onWindowBlur;
+
+  @override
+  final void Function(InAppWebViewController controller, Uint8List icon)?
+      androidOnReceivedIcon;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, Uri url, bool precomposed)?
+      androidOnReceivedTouchIconUrl;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri url)?
+      onDownloadStart;
+
+  @override
+  final void Function(InAppWebViewController controller, int activeMatchOrdinal,
+      int numberOfMatches, bool isDoneCounting)? onFindResultReceived;
+
+  @override
+  final Future<JsAlertResponse?> Function(
+          InAppWebViewController controller, JsAlertRequest jsAlertRequest)?
+      onJsAlert;
+
+  @override
+  final Future<JsConfirmResponse?> Function(
+          InAppWebViewController controller, JsConfirmRequest jsConfirmRequest)?
+      onJsConfirm;
+
+  @override
+  final Future<JsPromptResponse?> Function(
+          InAppWebViewController controller, JsPromptRequest jsPromptRequest)?
+      onJsPrompt;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri? url, int code,
+      String message)? onLoadError;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri? url,
+      int statusCode, String description)? onLoadHttpError;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, LoadedResource resource)?
+      onLoadResource;
+
+  @override
+  final Future<CustomSchemeResponse?> Function(
+      InAppWebViewController controller, Uri url)? onLoadResourceCustomScheme;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri? url)? onLoadStart;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri? url)? onLoadStop;
+
+  @override
+  final void Function(InAppWebViewController controller,
+      InAppWebViewHitTestResult hitTestResult)? onLongPressHitTestResult;
+
+  @override
+  final void Function(InAppWebViewController controller, Uri? url)? onPrint;
+
+  @override
+  final void Function(InAppWebViewController controller, int progress)?
+      onProgressChanged;
+
+  @override
+  final Future<ClientCertResponse?> Function(InAppWebViewController controller,
+      URLAuthenticationChallenge challenge)? onReceivedClientCertRequest;
+
+  @override
+  final Future<HttpAuthResponse?> Function(InAppWebViewController controller,
+      URLAuthenticationChallenge challenge)? onReceivedHttpAuthRequest;
+
+  @override
+  final Future<ServerTrustAuthResponse?> Function(
+      InAppWebViewController controller,
+      URLAuthenticationChallenge challenge)? onReceivedServerTrustAuthRequest;
+
+  @override
+  final void Function(InAppWebViewController controller, int x, int y)?
+      onScrollChanged;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, Uri? url, bool? androidIsReload)?
+      onUpdateVisitedHistory;
+
+  @override
+  final void Function(InAppWebViewController controller)? onWebViewCreated;
+
+  @override
+  final Future<AjaxRequest?> Function(
+          InAppWebViewController controller, AjaxRequest ajaxRequest)?
+      shouldInterceptAjaxRequest;
+
+  @override
+  final Future<FetchRequest?> Function(
+          InAppWebViewController controller, FetchRequest fetchRequest)?
+      shouldInterceptFetchRequest;
+
+  @override
+  final Future<NavigationActionPolicy?> Function(
+          InAppWebViewController controller, NavigationAction navigationAction)?
+      shouldOverrideUrlLoading;
+
+  @override
+  final void Function(InAppWebViewController controller)? onEnterFullscreen;
+
+  @override
+  final void Function(InAppWebViewController controller)? onExitFullscreen;
+
+  @override
+  final void Function(InAppWebViewController controller, int x, int y,
+      bool clampedX, bool clampedY)? onOverScrolled;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, double oldScale, double newScale)?
+      onZoomScaleChanged;
+
+  @override
+  final Future<WebResourceResponse?> Function(
+          InAppWebViewController controller, WebResourceRequest request)?
+      androidShouldInterceptRequest;
+
+  @override
+  final Future<WebViewRenderProcessAction?> Function(
+          InAppWebViewController controller, Uri? url)?
+      androidOnRenderProcessUnresponsive;
+
+  @override
+  final Future<WebViewRenderProcessAction?> Function(
+          InAppWebViewController controller, Uri? url)?
+      androidOnRenderProcessResponsive;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, RenderProcessGoneDetail detail)?
+      androidOnRenderProcessGone;
+
+  @override
+  final Future<FormResubmissionAction?> Function(
+      InAppWebViewController controller, Uri? url)? androidOnFormResubmission;
+
+  ///Use [onZoomScaleChanged] instead.
+  @Deprecated('Use `onZoomScaleChanged` instead')
+  @override
+  final void Function(
+          InAppWebViewController controller, double oldScale, double newScale)?
+      androidOnScaleChanged;
+
+  @override
+  final Future<JsBeforeUnloadResponse?> Function(
+      InAppWebViewController controller,
+      JsBeforeUnloadRequest jsBeforeUnloadRequest)? androidOnJsBeforeUnload;
+
+  @override
+  final void Function(
+          InAppWebViewController controller, LoginRequest loginRequest)?
+      androidOnReceivedLoginRequest;
 }
 
 class _MultiInAppWebviewState extends State<MultiInAppWebView> {
@@ -38,46 +378,157 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
   _createNewWebView(String initUrl) {
     setState(() {
       _inAppWebViews.add(InAppWebView(
-          initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
-          initialOptions: widget.options,
-          onWebViewCreated: (controller) => {
-                _inAppWebViewControllers.add(controller),
-              },
-          shouldOverrideUrlLoading: (controller, navigationAction) async {
-            NavigationActionPolicy? policy;
+        initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
+        initialOptions: widget.initialOptions ??
+            InAppWebViewGroupOptions(
+                crossPlatform: InAppWebViewOptions(),
+                android: AndroidInAppWebViewOptions(),
+                ios: IOSInAppWebViewOptions()),
+        onProgressChanged: (controller, progress) async {
+          if (widget.onProgressChanged != null) {
+            widget.onProgressChanged!(controller, progress);
+          } else {}
+        },
+        onWebViewCreated: (controller) => {
+          _inAppWebViewControllers.add(controller),
+          widget._currentWebViewController = controller,
+        },
+        androidOnPermissionRequest: (
+          InAppWebViewController controller,
+          String origin,
+          List<String> resources,
+        ) async {
+          return PermissionRequestResponse(
+            resources: resources,
+            action: PermissionRequestResponseAction.GRANT,
+          );
+        },
+        onLoadError: (controller, url, code, errMsg) async {
+          // NSURLErrorCancelled we can ignore it.
+          if (Platform.isIOS && code == -999) {
+            return;
+          }
 
-            if (widget.shouldOverrideUrlLoading != null) {
-              policy = await widget.shouldOverrideUrlLoading!(
-                  controller, navigationAction);
+          if (widget.onLoadError != null) {
+            widget.onLoadError!(controller, url, code, errMsg);
+          } else {
+            Fluttertoast.showToast(
+                msg: errMsg,
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.SNACKBAR,
+                timeInSecForIosWeb: 1);
+          }
+        },
+        onJsAlert: (controller, jsAlertRequest) async {
+          if (jsAlertRequest.message?.isNotEmpty ?? false) {
+            if (widget.onJsAlert != null) {
+              return widget.onJsAlert!(controller, jsAlertRequest);
+            } else {
+              Fluttertoast.showToast(
+                  msg: jsAlertRequest.message!,
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.SNACKBAR,
+                  timeInSecForIosWeb: 1);
+              return JsAlertResponse(handledByClient: true);
             }
+          }
+        },
+        shouldOverrideUrlLoading: (controller, navigationAction) async {
+          NavigationActionPolicy? policy;
 
-            if (policy != NavigationActionPolicy.CANCEL) {
-              Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
-              Uri newUri = navigationAction.request.url!;
+          if (widget.shouldOverrideUrlLoading != null) {
+            policy = await widget.shouldOverrideUrlLoading!(
+                controller, navigationAction);
+          }
 
-              if (newUri != curUri &&
-                  navigationAction.androidIsRedirect != true) {
-                bool bShouldOpenNew = false;
-                if (widget.shouldOpenNewWindow != null) {
-                  bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
+          if (policy != NavigationActionPolicy.CANCEL) {
+            Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
+            Uri newUri = navigationAction.request.url!;
 
-                  if (bShouldOpenNew == true &&
-                      _inAppWebViewControllers.length < widget.maxNewWindow) {
-                    print(
-                        '@@@ shouldOpenNewWindow true : ${newUri.toString()}');
+            if (newUri != curUri &&
+                navigationAction.androidIsRedirect != true) {
+              bool bShouldOpenNew = false;
+              if (widget.shouldOpenNewWindow != null) {
+                bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
 
-                    Future.microtask(() {
-                      _createNewWebView(newUri.toString());
-                    });
+                if (bShouldOpenNew == true &&
+                    _inAppWebViewControllers.length < widget.maxNewWindow) {
+                  print('@@@ shouldOpenNewWindow true : ${newUri.toString()}');
 
-                    policy = NavigationActionPolicy.CANCEL;
-                  }
+                  Future.microtask(() {
+                    _createNewWebView(newUri.toString());
+                  });
+
+                  policy = NavigationActionPolicy.CANCEL;
                 }
               }
             }
+          }
 
-            return policy;
-          }));
+          return policy;
+        },
+        // initialFile: widget.initialFile,
+        // initialData: widget.initialData,
+        // initialUserScripts: widget.initialUserScripts,
+        // pullToRefreshController: widget.pullToRefreshController,
+        // contextMenu: widget.contextMenu,
+        // onLoadStart: widget.onLoadStart,
+        // onLoadStop: widget.onLoadStop,
+        // onLoadHttpError: widget.onLoadHttpError,
+        // onConsoleMessage: widget.onConsoleMessage,
+        // onLoadResource: widget.onLoadResource,
+        // onScrollChanged: widget.onScrollChanged,
+        // onDownloadStart: widget.onDownloadStart,
+        // onLoadResourceCustomScheme: widget.onLoadResourceCustomScheme,
+        // onCreateWindow: widget.onCreateWindow,
+        // onCloseWindow: widget.onCloseWindow,
+        // onJsConfirm: widget.onJsConfirm,
+        // onJsPrompt: widget.onJsPrompt,
+        // onReceivedHttpAuthRequest: widget.onReceivedHttpAuthRequest,
+        // onReceivedServerTrustAuthRequest:
+        //     widget.onReceivedServerTrustAuthRequest,
+        // onReceivedClientCertRequest: widget.onReceivedClientCertRequest,
+        // onFindResultReceived: widget.onFindResultReceived,
+        // shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
+        // onAjaxReadyStateChange: widget.onAjaxReadyStateChange,
+        // onAjaxProgress: widget.onAjaxProgress,
+        // shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
+        // onUpdateVisitedHistory: widget.onUpdateVisitedHistory,
+        // onPrint: widget.onPrint,
+        // onLongPressHitTestResult: widget.onLongPressHitTestResult,
+        // onEnterFullscreen: widget.onEnterFullscreen,
+        // onExitFullscreen: widget.onExitFullscreen,
+        // onPageCommitVisible: widget.onPageCommitVisible,
+        // onTitleChanged: widget.onTitleChanged,
+        // onWindowFocus: widget.onWindowFocus,
+        // onWindowBlur: widget.onWindowBlur,
+        // onOverScrolled: widget.onOverScrolled,
+        // onZoomScaleChanged: widget.onZoomScaleChanged,
+        // androidOnSafeBrowsingHit: widget.androidOnSafeBrowsingHit,
+        // androidOnGeolocationPermissionsShowPrompt:
+        //     widget.androidOnGeolocationPermissionsShowPrompt,
+        // androidOnGeolocationPermissionsHidePrompt:
+        //     widget.androidOnGeolocationPermissionsHidePrompt,
+        // androidShouldInterceptRequest: widget.androidShouldInterceptRequest,
+        // androidOnRenderProcessGone: widget.androidOnRenderProcessGone,
+        // androidOnRenderProcessResponsive:
+        //     widget.androidOnRenderProcessResponsive,
+        // androidOnRenderProcessUnresponsive:
+        //     widget.androidOnRenderProcessUnresponsive,
+        // androidOnFormResubmission: widget.androidOnFormResubmission,
+        // androidOnScaleChanged: widget.androidOnScaleChanged,
+        // androidOnReceivedIcon: widget.androidOnReceivedIcon,
+        // androidOnReceivedTouchIconUrl: widget.androidOnReceivedTouchIconUrl,
+        // androidOnJsBeforeUnload: widget.androidOnJsBeforeUnload,
+        // androidOnReceivedLoginRequest: widget.androidOnReceivedLoginRequest,
+        // iosOnWebContentProcessDidTerminate:
+        //     widget.iosOnWebContentProcessDidTerminate,
+        // iosOnDidReceiveServerRedirectForProvisionalNavigation:
+        //     widget.iosOnDidReceiveServerRedirectForProvisionalNavigation,
+        // iosOnNavigationResponse: widget.iosOnNavigationResponse,
+        // iosShouldAllowDeprecatedTLS: widget.iosShouldAllowDeprecatedTLS,
+        // gestureRecognizers: widget.gestureRecognizers,
+      ));
     });
   }
 
@@ -88,6 +539,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
       setState(() {
         _inAppWebViews.removeLast();
         _inAppWebViewControllers.removeLast();
+        widget._currentWebViewController = _currnetWebViewController;
       });
     }
   }
@@ -95,12 +547,14 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
   @override
   void initState() {
     //force options
-    widget.options.crossPlatform.useShouldOverrideUrlLoading = true;
-    widget.options.crossPlatform.javaScriptEnabled = true;
-    widget.options.android.useHybridComposition = true;
-    widget.options.ios.allowsLinkPreview = false;
+    widget.initialOptions?.crossPlatform.useShouldOverrideUrlLoading = true;
+    widget.initialOptions?.crossPlatform.javaScriptEnabled = true;
+    widget.initialOptions?.android.useHybridComposition = true;
+    widget.initialOptions?.ios.allowsLinkPreview = false;
 
-    _createNewWebView(widget.initialUrl);
+    _createNewWebView(
+        widget.initialUrlRequest?.url.toString() ?? 'about:blank');
+
     super.initState();
   }
 
