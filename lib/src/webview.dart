@@ -394,7 +394,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
     });
   }
 
-  _createNewWebView(String initUrl) {
+  Widget _createNewWebView(String initUrl) {
     //force options
     widget.initialOptions ??= InAppWebViewGroupOptions();
     widget.initialOptions?.crossPlatform.useShouldOverrideUrlLoading = true;
@@ -402,180 +402,192 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
     widget.initialOptions?.android.useHybridComposition = true;
     widget.initialOptions?.ios.allowsLinkPreview = false;
 
-    setState(() {
-      _inAppWebViews.add(InAppWebView(
-        initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
-        initialOptions: widget.initialOptions,
-        onProgressChanged: (controller, progress) async {
-          print('progress: $progress');
-          setState(() {
-            loadingProgress = progress;
-          });
+    _inAppWebViews.add(InAppWebView(
+      initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
+      initialOptions: widget.initialOptions,
+      onProgressChanged: (controller, progress) async {
+        print('progress: $progress');
+        setState(() {
+          loadingProgress = progress;
+        });
 
-          if (widget.onProgressChanged != null) {
-            widget.onProgressChanged!(controller, progress);
+        if (widget.onProgressChanged != null) {
+          widget.onProgressChanged!(controller, progress);
+        }
+      },
+      onWebViewCreated: (controller) => {
+        _inAppWebViewControllers.add(controller),
+        if (widget.onWebViewCreated != null)
+          {
+            widget.onWebViewCreated!(controller),
           }
-        },
-        onWebViewCreated: (controller) => {
-          _inAppWebViewControllers.add(controller),
-          if (widget.onWebViewCreated != null)
-            {
-              widget.onWebViewCreated!(controller),
-            }
-        },
-        androidOnPermissionRequest: (
-          InAppWebViewController controller,
-          String origin,
-          List<String> resources,
-        ) async {
-          return PermissionRequestResponse(
-            resources: resources,
-            action: PermissionRequestResponseAction.GRANT,
-          );
-        },
-        onLoadError: (controller, url, code, errMsg) async {
-          // NSURLErrorCancelled we can ignore it.
-          if (Platform.isIOS && code == -999) {
-            return;
-          }
+      },
+      androidOnPermissionRequest: (
+        InAppWebViewController controller,
+        String origin,
+        List<String> resources,
+      ) async {
+        return PermissionRequestResponse(
+          resources: resources,
+          action: PermissionRequestResponseAction.GRANT,
+        );
+      },
+      onLoadError: (controller, url, code, errMsg) async {
+        // NSURLErrorCancelled we can ignore it.
+        if (Platform.isIOS && code == -999) {
+          return;
+        }
 
-          if (widget.onLoadError != null) {
-            widget.onLoadError!(controller, url, code, errMsg);
+        if (widget.onLoadError != null) {
+          widget.onLoadError!(controller, url, code, errMsg);
+        } else {
+          Fluttertoast.showToast(
+              msg: errMsg,
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.SNACKBAR,
+              timeInSecForIosWeb: 1);
+        }
+      },
+      onJsAlert: (controller, jsAlertRequest) async {
+        if (jsAlertRequest.message?.isNotEmpty ?? false) {
+          if (widget.onJsAlert != null) {
+            return widget.onJsAlert!(controller, jsAlertRequest);
           } else {
             Fluttertoast.showToast(
-                msg: errMsg,
+                msg: jsAlertRequest.message!,
                 toastLength: Toast.LENGTH_SHORT,
                 gravity: ToastGravity.SNACKBAR,
                 timeInSecForIosWeb: 1);
+            return JsAlertResponse(handledByClient: true);
           }
-        },
-        onJsAlert: (controller, jsAlertRequest) async {
-          if (jsAlertRequest.message?.isNotEmpty ?? false) {
-            if (widget.onJsAlert != null) {
-              return widget.onJsAlert!(controller, jsAlertRequest);
-            } else {
-              Fluttertoast.showToast(
-                  msg: jsAlertRequest.message!,
-                  toastLength: Toast.LENGTH_SHORT,
-                  gravity: ToastGravity.SNACKBAR,
-                  timeInSecForIosWeb: 1);
-              return JsAlertResponse(handledByClient: true);
-            }
-          }
-        },
-        shouldOverrideUrlLoading: (controller, navigationAction) async {
-          NavigationActionPolicy? policy;
+        }
+      },
+      shouldOverrideUrlLoading: (controller, navigationAction) async {
+        NavigationActionPolicy? policy;
 
-          if (widget.shouldOverrideUrlLoading != null) {
-            policy = await widget.shouldOverrideUrlLoading!(
-                controller, navigationAction);
-          }
+        if (widget.shouldOverrideUrlLoading != null) {
+          policy = await widget.shouldOverrideUrlLoading!(
+              controller, navigationAction);
+        }
 
-          if (policy != NavigationActionPolicy.CANCEL) {
-            Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
-            Uri newUri = navigationAction.request.url!;
+        if (policy != NavigationActionPolicy.CANCEL) {
+          Uri curUri = await controller.getUrl() ?? Uri.parse(initUrl);
+          Uri newUri = navigationAction.request.url!;
 
-            if (newUri != curUri &&
-                navigationAction.androidIsRedirect != true) {
-              bool bShouldOpenNew = false;
-              if (widget.shouldOpenNewWindow != null) {
-                bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
+          if (newUri != curUri && navigationAction.androidIsRedirect != true) {
+            bool bShouldOpenNew = false;
+            if (widget.shouldOpenNewWindow != null) {
+              bShouldOpenNew = widget.shouldOpenNewWindow!(newUri);
 
-                if (bShouldOpenNew == true &&
-                    _inAppWebViewControllers.length < widget.maxNewWindow) {
-                  print(
-                      '@@@ MultiInAppWebView->shouldOpenNewWindow true : ${newUri.toString()}');
+              if (bShouldOpenNew == true &&
+                  _inAppWebViewControllers.length < widget.maxNewWindow) {
+                print(
+                    '@@@ MultiInAppWebView->shouldOpenNewWindow true : ${newUri.toString()}');
 
-                  Future.microtask(() {
-                    _createNewWebView(newUri.toString());
-                  });
+                Future.microtask(() {
+                  //导航到新路由
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) {
+                      return WillPopScope(
+                          onWillPop: () async {
+                            //关闭当前页面
+                            _distroyLastWebView();
+                            Navigator.pop(context, false);
+                            return false;
+                          },
+                          child: _createNewWebView(newUri.toString()));
+                    }),
+                  );
 
-                  policy = NavigationActionPolicy.CANCEL;
-                } else {
-                  print(
-                      '@@@ MultiInAppWebView->shouldOpenNewWindow false : ${newUri.toString()}');
-                }
+                  // _createNewWebView(newUri.toString());
+                });
+
+                policy = NavigationActionPolicy.CANCEL;
+              } else {
+                print(
+                    '@@@ MultiInAppWebView->shouldOpenNewWindow false : ${newUri.toString()}');
               }
             }
           }
+        }
 
-          return policy;
-        },
-        onLoadStart: (controller, url) {
-          loadingProgress = 0;
+        return policy;
+      },
+      onLoadStart: (controller, url) {
+        loadingProgress = 0;
 
-          if (widget.onLoadStart != null) {
-            widget.onLoadStart!(controller, url);
-          }
-        },
-        onLoadStop: (controller, url) {
-          loadingProgress = 0;
+        if (widget.onLoadStart != null) {
+          widget.onLoadStart!(controller, url);
+        }
+      },
+      onLoadStop: (controller, url) {
+        loadingProgress = 0;
 
-          if (widget.onLoadStop != null) {
-            widget.onLoadStop!(controller, url);
-          }
-        },
-        initialFile: widget.initialFile,
-        initialData: widget.initialData,
-        initialUserScripts: widget.initialUserScripts,
-        pullToRefreshController: widget.pullToRefreshController,
-        contextMenu: widget.contextMenu,
-        onLoadHttpError: widget.onLoadHttpError,
-        onConsoleMessage: widget.onConsoleMessage,
-        onLoadResource: widget.onLoadResource,
-        onScrollChanged: widget.onScrollChanged,
-        onDownloadStart: widget.onDownloadStart,
-        onLoadResourceCustomScheme: widget.onLoadResourceCustomScheme,
-        onCreateWindow: widget.onCreateWindow,
-        onCloseWindow: widget.onCloseWindow,
-        onJsConfirm: widget.onJsConfirm,
-        onJsPrompt: widget.onJsPrompt,
-        onReceivedHttpAuthRequest: widget.onReceivedHttpAuthRequest,
-        onReceivedServerTrustAuthRequest:
-            widget.onReceivedServerTrustAuthRequest,
-        onReceivedClientCertRequest: widget.onReceivedClientCertRequest,
-        onFindResultReceived: widget.onFindResultReceived,
-        shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
-        onAjaxReadyStateChange: widget.onAjaxReadyStateChange,
-        shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
-        onUpdateVisitedHistory: widget.onUpdateVisitedHistory,
-        onAjaxProgress: widget.onAjaxProgress,
-        onPrint: widget.onPrint,
-        onLongPressHitTestResult: widget.onLongPressHitTestResult,
-        onEnterFullscreen: widget.onEnterFullscreen,
-        onExitFullscreen: widget.onExitFullscreen,
-        onPageCommitVisible: widget.onPageCommitVisible,
-        onTitleChanged: widget.onTitleChanged,
-        onWindowFocus: widget.onWindowFocus,
-        onWindowBlur: widget.onWindowBlur,
-        onOverScrolled: widget.onOverScrolled,
-        onZoomScaleChanged: widget.onZoomScaleChanged,
-        androidOnSafeBrowsingHit: widget.androidOnSafeBrowsingHit,
-        androidOnGeolocationPermissionsShowPrompt:
-            widget.androidOnGeolocationPermissionsShowPrompt,
-        androidOnGeolocationPermissionsHidePrompt:
-            widget.androidOnGeolocationPermissionsHidePrompt,
-        androidShouldInterceptRequest: widget.androidShouldInterceptRequest,
-        androidOnRenderProcessGone: widget.androidOnRenderProcessGone,
-        androidOnRenderProcessResponsive:
-            widget.androidOnRenderProcessResponsive,
-        androidOnRenderProcessUnresponsive:
-            widget.androidOnRenderProcessUnresponsive,
-        androidOnFormResubmission: widget.androidOnFormResubmission,
-        androidOnScaleChanged: widget.androidOnScaleChanged,
-        androidOnReceivedIcon: widget.androidOnReceivedIcon,
-        androidOnReceivedTouchIconUrl: widget.androidOnReceivedTouchIconUrl,
-        androidOnJsBeforeUnload: widget.androidOnJsBeforeUnload,
-        androidOnReceivedLoginRequest: widget.androidOnReceivedLoginRequest,
-        iosOnWebContentProcessDidTerminate:
-            widget.iosOnWebContentProcessDidTerminate,
-        iosOnDidReceiveServerRedirectForProvisionalNavigation:
-            widget.iosOnDidReceiveServerRedirectForProvisionalNavigation,
-        iosOnNavigationResponse: widget.iosOnNavigationResponse,
-        iosShouldAllowDeprecatedTLS: widget.iosShouldAllowDeprecatedTLS,
-        gestureRecognizers: widget.gestureRecognizers,
-      ));
-    });
+        if (widget.onLoadStop != null) {
+          widget.onLoadStop!(controller, url);
+        }
+      },
+      initialFile: widget.initialFile,
+      initialData: widget.initialData,
+      initialUserScripts: widget.initialUserScripts,
+      pullToRefreshController: widget.pullToRefreshController,
+      contextMenu: widget.contextMenu,
+      onLoadHttpError: widget.onLoadHttpError,
+      onConsoleMessage: widget.onConsoleMessage,
+      onLoadResource: widget.onLoadResource,
+      onScrollChanged: widget.onScrollChanged,
+      onDownloadStart: widget.onDownloadStart,
+      onLoadResourceCustomScheme: widget.onLoadResourceCustomScheme,
+      onCreateWindow: widget.onCreateWindow,
+      onCloseWindow: widget.onCloseWindow,
+      onJsConfirm: widget.onJsConfirm,
+      onJsPrompt: widget.onJsPrompt,
+      onReceivedHttpAuthRequest: widget.onReceivedHttpAuthRequest,
+      onReceivedServerTrustAuthRequest: widget.onReceivedServerTrustAuthRequest,
+      onReceivedClientCertRequest: widget.onReceivedClientCertRequest,
+      onFindResultReceived: widget.onFindResultReceived,
+      shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
+      onAjaxReadyStateChange: widget.onAjaxReadyStateChange,
+      shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
+      onUpdateVisitedHistory: widget.onUpdateVisitedHistory,
+      onAjaxProgress: widget.onAjaxProgress,
+      onPrint: widget.onPrint,
+      onLongPressHitTestResult: widget.onLongPressHitTestResult,
+      onEnterFullscreen: widget.onEnterFullscreen,
+      onExitFullscreen: widget.onExitFullscreen,
+      onPageCommitVisible: widget.onPageCommitVisible,
+      onTitleChanged: widget.onTitleChanged,
+      onWindowFocus: widget.onWindowFocus,
+      onWindowBlur: widget.onWindowBlur,
+      onOverScrolled: widget.onOverScrolled,
+      onZoomScaleChanged: widget.onZoomScaleChanged,
+      androidOnSafeBrowsingHit: widget.androidOnSafeBrowsingHit,
+      androidOnGeolocationPermissionsShowPrompt:
+          widget.androidOnGeolocationPermissionsShowPrompt,
+      androidOnGeolocationPermissionsHidePrompt:
+          widget.androidOnGeolocationPermissionsHidePrompt,
+      androidShouldInterceptRequest: widget.androidShouldInterceptRequest,
+      androidOnRenderProcessGone: widget.androidOnRenderProcessGone,
+      androidOnRenderProcessResponsive: widget.androidOnRenderProcessResponsive,
+      androidOnRenderProcessUnresponsive:
+          widget.androidOnRenderProcessUnresponsive,
+      androidOnFormResubmission: widget.androidOnFormResubmission,
+      androidOnScaleChanged: widget.androidOnScaleChanged,
+      androidOnReceivedIcon: widget.androidOnReceivedIcon,
+      androidOnReceivedTouchIconUrl: widget.androidOnReceivedTouchIconUrl,
+      androidOnJsBeforeUnload: widget.androidOnJsBeforeUnload,
+      androidOnReceivedLoginRequest: widget.androidOnReceivedLoginRequest,
+      iosOnWebContentProcessDidTerminate:
+          widget.iosOnWebContentProcessDidTerminate,
+      iosOnDidReceiveServerRedirectForProvisionalNavigation:
+          widget.iosOnDidReceiveServerRedirectForProvisionalNavigation,
+      iosOnNavigationResponse: widget.iosOnNavigationResponse,
+      iosShouldAllowDeprecatedTLS: widget.iosShouldAllowDeprecatedTLS,
+      gestureRecognizers: widget.gestureRecognizers,
+    ));
+
+    return _inAppWebViews.last;
   }
 
   _distroyLastWebView() {
@@ -585,7 +597,6 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
       setState(() {
         _inAppWebViews.removeLast();
         _inAppWebViewControllers.removeLast();
-
         loadingProgress = 0;
       });
     }
@@ -618,7 +629,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
             child: Stack(children: [
               /// webviews
               Stack(
-                children: _inAppWebViews,
+                children: [_inAppWebViews.first],
               ),
 
               /// loading progress
