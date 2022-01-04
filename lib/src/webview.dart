@@ -376,6 +376,13 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
       _inAppWebViewControllers.last;
 
   _createNewWebView(String initUrl) {
+    //force options
+    widget.initialOptions ??= InAppWebViewGroupOptions();
+    widget.initialOptions?.crossPlatform.useShouldOverrideUrlLoading = true;
+    widget.initialOptions?.crossPlatform.javaScriptEnabled = true;
+    widget.initialOptions?.android.useHybridComposition = true;
+    widget.initialOptions?.ios.allowsLinkPreview = false;
+
     setState(() {
       _inAppWebViews.add(InAppWebView(
         initialUrlRequest: URLRequest(url: Uri.tryParse(initUrl)),
@@ -462,67 +469,67 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
           return policy;
         },
-        // initialFile: widget.initialFile,
-        // initialData: widget.initialData,
-        // initialUserScripts: widget.initialUserScripts,
-        // pullToRefreshController: widget.pullToRefreshController,
-        // contextMenu: widget.contextMenu,
-        // onLoadStart: widget.onLoadStart,
-        // onLoadStop: widget.onLoadStop,
-        // onLoadHttpError: widget.onLoadHttpError,
-        // onConsoleMessage: widget.onConsoleMessage,
-        // onLoadResource: widget.onLoadResource,
-        // onScrollChanged: widget.onScrollChanged,
-        // onDownloadStart: widget.onDownloadStart,
-        // onLoadResourceCustomScheme: widget.onLoadResourceCustomScheme,
-        // onCreateWindow: widget.onCreateWindow,
-        // onCloseWindow: widget.onCloseWindow,
-        // onJsConfirm: widget.onJsConfirm,
-        // onJsPrompt: widget.onJsPrompt,
-        // onReceivedHttpAuthRequest: widget.onReceivedHttpAuthRequest,
-        // onReceivedServerTrustAuthRequest:
-        //     widget.onReceivedServerTrustAuthRequest,
-        // onReceivedClientCertRequest: widget.onReceivedClientCertRequest,
-        // onFindResultReceived: widget.onFindResultReceived,
-        // shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
-        // onAjaxReadyStateChange: widget.onAjaxReadyStateChange,
-        // onAjaxProgress: widget.onAjaxProgress,
-        // shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
-        // onUpdateVisitedHistory: widget.onUpdateVisitedHistory,
-        // onPrint: widget.onPrint,
-        // onLongPressHitTestResult: widget.onLongPressHitTestResult,
-        // onEnterFullscreen: widget.onEnterFullscreen,
-        // onExitFullscreen: widget.onExitFullscreen,
-        // onPageCommitVisible: widget.onPageCommitVisible,
-        // onTitleChanged: widget.onTitleChanged,
-        // onWindowFocus: widget.onWindowFocus,
-        // onWindowBlur: widget.onWindowBlur,
-        // onOverScrolled: widget.onOverScrolled,
-        // onZoomScaleChanged: widget.onZoomScaleChanged,
-        // androidOnSafeBrowsingHit: widget.androidOnSafeBrowsingHit,
-        // androidOnGeolocationPermissionsShowPrompt:
-        //     widget.androidOnGeolocationPermissionsShowPrompt,
-        // androidOnGeolocationPermissionsHidePrompt:
-        //     widget.androidOnGeolocationPermissionsHidePrompt,
-        // androidShouldInterceptRequest: widget.androidShouldInterceptRequest,
-        // androidOnRenderProcessGone: widget.androidOnRenderProcessGone,
-        // androidOnRenderProcessResponsive:
-        //     widget.androidOnRenderProcessResponsive,
-        // androidOnRenderProcessUnresponsive:
-        //     widget.androidOnRenderProcessUnresponsive,
-        // androidOnFormResubmission: widget.androidOnFormResubmission,
-        // androidOnScaleChanged: widget.androidOnScaleChanged,
-        // androidOnReceivedIcon: widget.androidOnReceivedIcon,
-        // androidOnReceivedTouchIconUrl: widget.androidOnReceivedTouchIconUrl,
-        // androidOnJsBeforeUnload: widget.androidOnJsBeforeUnload,
-        // androidOnReceivedLoginRequest: widget.androidOnReceivedLoginRequest,
-        // iosOnWebContentProcessDidTerminate:
-        //     widget.iosOnWebContentProcessDidTerminate,
-        // iosOnDidReceiveServerRedirectForProvisionalNavigation:
-        //     widget.iosOnDidReceiveServerRedirectForProvisionalNavigation,
-        // iosOnNavigationResponse: widget.iosOnNavigationResponse,
-        // iosShouldAllowDeprecatedTLS: widget.iosShouldAllowDeprecatedTLS,
-        // gestureRecognizers: widget.gestureRecognizers,
+        initialFile: widget.initialFile,
+        initialData: widget.initialData,
+        initialUserScripts: widget.initialUserScripts,
+        pullToRefreshController: widget.pullToRefreshController,
+        contextMenu: widget.contextMenu,
+        onLoadStart: widget.onLoadStart,
+        onLoadStop: widget.onLoadStop,
+        onLoadHttpError: widget.onLoadHttpError,
+        onConsoleMessage: widget.onConsoleMessage,
+        onLoadResource: widget.onLoadResource,
+        onScrollChanged: widget.onScrollChanged,
+        onDownloadStart: widget.onDownloadStart,
+        onLoadResourceCustomScheme: widget.onLoadResourceCustomScheme,
+        onCreateWindow: widget.onCreateWindow,
+        onCloseWindow: widget.onCloseWindow,
+        onJsConfirm: widget.onJsConfirm,
+        onJsPrompt: widget.onJsPrompt,
+        onReceivedHttpAuthRequest: widget.onReceivedHttpAuthRequest,
+        onReceivedServerTrustAuthRequest:
+            widget.onReceivedServerTrustAuthRequest,
+        onReceivedClientCertRequest: widget.onReceivedClientCertRequest,
+        onFindResultReceived: widget.onFindResultReceived,
+        shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
+        onAjaxReadyStateChange: widget.onAjaxReadyStateChange,
+        onAjaxProgress: widget.onAjaxProgress,
+        shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
+        onUpdateVisitedHistory: widget.onUpdateVisitedHistory,
+        onPrint: widget.onPrint,
+        onLongPressHitTestResult: widget.onLongPressHitTestResult,
+        onEnterFullscreen: widget.onEnterFullscreen,
+        onExitFullscreen: widget.onExitFullscreen,
+        onPageCommitVisible: widget.onPageCommitVisible,
+        onTitleChanged: widget.onTitleChanged,
+        onWindowFocus: widget.onWindowFocus,
+        onWindowBlur: widget.onWindowBlur,
+        onOverScrolled: widget.onOverScrolled,
+        onZoomScaleChanged: widget.onZoomScaleChanged,
+        androidOnSafeBrowsingHit: widget.androidOnSafeBrowsingHit,
+        androidOnGeolocationPermissionsShowPrompt:
+            widget.androidOnGeolocationPermissionsShowPrompt,
+        androidOnGeolocationPermissionsHidePrompt:
+            widget.androidOnGeolocationPermissionsHidePrompt,
+        androidShouldInterceptRequest: widget.androidShouldInterceptRequest,
+        androidOnRenderProcessGone: widget.androidOnRenderProcessGone,
+        androidOnRenderProcessResponsive:
+            widget.androidOnRenderProcessResponsive,
+        androidOnRenderProcessUnresponsive:
+            widget.androidOnRenderProcessUnresponsive,
+        androidOnFormResubmission: widget.androidOnFormResubmission,
+        androidOnScaleChanged: widget.androidOnScaleChanged,
+        androidOnReceivedIcon: widget.androidOnReceivedIcon,
+        androidOnReceivedTouchIconUrl: widget.androidOnReceivedTouchIconUrl,
+        androidOnJsBeforeUnload: widget.androidOnJsBeforeUnload,
+        androidOnReceivedLoginRequest: widget.androidOnReceivedLoginRequest,
+        iosOnWebContentProcessDidTerminate:
+            widget.iosOnWebContentProcessDidTerminate,
+        iosOnDidReceiveServerRedirectForProvisionalNavigation:
+            widget.iosOnDidReceiveServerRedirectForProvisionalNavigation,
+        iosOnNavigationResponse: widget.iosOnNavigationResponse,
+        iosShouldAllowDeprecatedTLS: widget.iosShouldAllowDeprecatedTLS,
+        gestureRecognizers: widget.gestureRecognizers,
       ));
     });
   }
@@ -540,13 +547,6 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
   @override
   void initState() {
-    //force options
-    widget.initialOptions ??= InAppWebViewGroupOptions();
-    widget.initialOptions?.crossPlatform.useShouldOverrideUrlLoading = true;
-    widget.initialOptions?.crossPlatform.javaScriptEnabled = true;
-    widget.initialOptions?.android.useHybridComposition = true;
-    widget.initialOptions?.ios.allowsLinkPreview = false;
-
     _createNewWebView(
         widget.initialUrlRequest?.url.toString() ?? 'about:blank');
 
