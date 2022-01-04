@@ -485,19 +485,19 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
                     '@@@ MultiInAppWebView->shouldOpenNewWindow true : ${newUri.toString()}');
 
                 Future.microtask(() {
-                  //导航到新路由
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) {
-                      return WillPopScope(
-                          onWillPop: () async {
-                            //关闭当前页面
-                            _distroyLastWebView();
-                            Navigator.pop(context, false);
-                            return false;
-                          },
-                          child: _createNewWebView(newUri.toString()));
-                    }),
+                    CupertinoPageRoute(
+                      builder: (context) {
+                        return WillPopScope(
+                            onWillPop: () async {
+                              _distroyLastWebView();
+                              Navigator.pop(context, false);
+                              return false;
+                            },
+                            child: _createNewWebView(newUri.toString())); //路由B
+                      },
+                    ),
                   );
 
                   // _createNewWebView(newUri.toString());
