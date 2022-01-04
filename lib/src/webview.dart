@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
+import 'package:flutter/cupertino.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class MultiInAppWebView extends StatefulWidget implements WebView {
@@ -16,7 +16,11 @@ class MultiInAppWebView extends StatefulWidget implements WebView {
   ///The window id of a [CreateWindowAction.windowId].
   final int? windowId;
 
+  /// custom loading widget
   Widget? progressWidget;
+
+  /// loading progress of current webview controller , from 0 to 100
+  int loadingProgress = 0;
 
   MultiInAppWebView({
     /// if you want to use new webview to open some url, return true
@@ -104,6 +108,7 @@ class MultiInAppWebView extends StatefulWidget implements WebView {
   @override
   _MultiInAppWebviewState createState() => _MultiInAppWebviewState();
 
+  /// if you want to use new webview to open some url, return true
   bool Function(Uri url)? shouldOpenNewWindow;
 
   /// `gestureRecognizers` specifies which gestures should be consumed by the WebView.
@@ -377,10 +382,17 @@ class MultiInAppWebView extends StatefulWidget implements WebView {
 class _MultiInAppWebviewState extends State<MultiInAppWebView> {
   List<InAppWebView> _inAppWebViews = [];
   List<InAppWebViewController> _inAppWebViewControllers = [];
-  InAppWebView get _currnetWebView => _inAppWebViews.last;
-  InAppWebViewController get _currnetWebViewController =>
+  InAppWebView get currnetWebView => _inAppWebViews.last;
+  InAppWebViewController get currnetWebViewController =>
       _inAppWebViewControllers.last;
-  double loadingProgress = 0.0;
+  int _loadingProgress = 0;
+  int get loadingProgress => _loadingProgress;
+  set loadingProgress(int value) {
+    setState(() {
+      _loadingProgress = value;
+      widget.loadingProgress = value;
+    });
+  }
 
   _createNewWebView(String initUrl) {
     //force options
@@ -397,7 +409,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
         onProgressChanged: (controller, progress) async {
           print('progress: $progress');
           setState(() {
-            loadingProgress = progress / 100;
+            loadingProgress = progress;
           });
 
           if (widget.onProgressChanged != null) {
@@ -406,6 +418,10 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
         },
         onWebViewCreated: (controller) => {
           _inAppWebViewControllers.add(controller),
+          if (widget.onWebViewCreated != null)
+            {
+              widget.onWebViewCreated!(controller),
+            }
         },
         androidOnPermissionRequest: (
           InAppWebViewController controller,
@@ -485,13 +501,25 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
           return policy;
         },
+        onLoadStart: (controller, url) {
+          loadingProgress = 0;
+
+          if (widget.onLoadStart != null) {
+            widget.onLoadStart!(controller, url);
+          }
+        },
+        onLoadStop: (controller, url) {
+          loadingProgress = 0;
+
+          if (widget.onLoadStop != null) {
+            widget.onLoadStop!(controller, url);
+          }
+        },
         initialFile: widget.initialFile,
         initialData: widget.initialData,
         initialUserScripts: widget.initialUserScripts,
         pullToRefreshController: widget.pullToRefreshController,
         contextMenu: widget.contextMenu,
-        onLoadStart: widget.onLoadStart,
-        onLoadStop: widget.onLoadStop,
         onLoadHttpError: widget.onLoadHttpError,
         onConsoleMessage: widget.onConsoleMessage,
         onLoadResource: widget.onLoadResource,
@@ -509,9 +537,9 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
         onFindResultReceived: widget.onFindResultReceived,
         shouldInterceptAjaxRequest: widget.shouldInterceptAjaxRequest,
         onAjaxReadyStateChange: widget.onAjaxReadyStateChange,
-        onAjaxProgress: widget.onAjaxProgress,
         shouldInterceptFetchRequest: widget.shouldInterceptFetchRequest,
         onUpdateVisitedHistory: widget.onUpdateVisitedHistory,
+        onAjaxProgress: widget.onAjaxProgress,
         onPrint: widget.onPrint,
         onLongPressHitTestResult: widget.onLongPressHitTestResult,
         onEnterFullscreen: widget.onEnterFullscreen,
@@ -552,7 +580,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
   _distroyLastWebView() {
     if (_inAppWebViews.length > 1) {
-      _currnetWebViewController.callAsyncJavaScript(
+      currnetWebViewController.callAsyncJavaScript(
           functionBody: "window.stop();");
       setState(() {
         _inAppWebViews.removeLast();
@@ -576,8 +604,9 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
     return Expanded(
         child: WillPopScope(
             onWillPop: () async {
-              if (await _currnetWebViewController.canGoBack()) {
-                _currnetWebViewController.goBack();
+              print('WillPopScope');
+              if (await currnetWebViewController.canGoBack()) {
+                currnetWebViewController.goBack();
                 return Future.value(false);
               } else if (_inAppWebViews.length > 1) {
                 _distroyLastWebView();
@@ -587,13 +616,16 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
               }
             },
             child: Stack(children: [
+              /// webviews
               Stack(
                 children: _inAppWebViews,
               ),
+
+              /// loading progress
               Visibility(
                   child: widget.progressWidget ??
-                      LinearProgressIndicator(value: loadingProgress),
-                  visible: (loadingProgress > 0 && loadingProgress < 0.9)),
+                      LinearProgressIndicator(value: loadingProgress / 100),
+                  visible: (loadingProgress > 0 && loadingProgress < 90)),
             ])));
   }
 }
