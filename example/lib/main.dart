@@ -91,7 +91,24 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             MultiInAppWebView(
-              maxNewWindow: 3,
+              maxNewWindow: 2,
+              initialOptions: InAppWebViewGroupOptions(
+                  crossPlatform: InAppWebViewOptions(
+                    userAgent: 'homeWebviewUA',
+                    useOnDownloadStart: true,
+                    javaScriptEnabled: true,
+                    useOnLoadResource: true,
+                    useShouldOverrideUrlLoading: true,
+                    cacheEnabled: true,
+                    mediaPlaybackRequiresUserGesture: false,
+                  ),
+                  android: AndroidInAppWebViewOptions(
+                    useHybridComposition: true,
+                  ),
+                  ios: IOSInAppWebViewOptions(
+                    allowsInlineMediaPlayback: true,
+                    allowsLinkPreview: false,
+                  )),
               initialUrlRequest:
                   URLRequest(url: Uri.tryParse('https://mall.lookingpet.com/')),
               shouldOpenNewWindow: (uri) {

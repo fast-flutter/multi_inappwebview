@@ -9,6 +9,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'events.dart';
+import 'webview_window.dart';
 
 class MultiInAppWebView extends StatefulWidget implements WebView {
   final int maxNewWindow;
@@ -394,7 +396,7 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
     });
   }
 
-  Widget _createNewWebView(String initUrl) {
+  InAppWebView _createNewWebView(String initUrl) {
     //force options
     widget.initialOptions ??= InAppWebViewGroupOptions();
     widget.initialOptions?.crossPlatform.useShouldOverrideUrlLoading = true;
@@ -462,6 +464,15 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
           }
         }
       },
+      onTitleChanged: (controller, title) {
+        if (widget.onTitleChanged != null) {
+          widget.onTitleChanged!(controller, title);
+        }
+
+        if (title != null) {
+          eventBus.fire(ONewWebViewTitleChangeEvent(title));
+        }
+      },
       shouldOverrideUrlLoading: (controller, navigationAction) async {
         NavigationActionPolicy? policy;
 
@@ -489,13 +500,8 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
                     context,
                     CupertinoPageRoute(
                       builder: (context) {
-                        return WillPopScope(
-                            onWillPop: () async {
-                              _distroyLastWebView();
-                              Navigator.pop(context, false);
-                              return false;
-                            },
-                            child: _createNewWebView(newUri.toString())); //路由B
+                        return NewNewWebViewWindow(
+                            _createNewWebView(newUri.toString())); //路由B
                       },
                     ),
                   );
@@ -557,7 +563,6 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
       onEnterFullscreen: widget.onEnterFullscreen,
       onExitFullscreen: widget.onExitFullscreen,
       onPageCommitVisible: widget.onPageCommitVisible,
-      onTitleChanged: widget.onTitleChanged,
       onWindowFocus: widget.onWindowFocus,
       onWindowBlur: widget.onWindowBlur,
       onOverScrolled: widget.onOverScrolled,
@@ -592,8 +597,6 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
   _distroyLastWebView() {
     if (_inAppWebViews.length > 1) {
-      currnetWebViewController.callAsyncJavaScript(
-          functionBody: "window.stop();");
       setState(() {
         _inAppWebViews.removeLast();
         _inAppWebViewControllers.removeLast();
@@ -604,6 +607,10 @@ class _MultiInAppWebviewState extends State<MultiInAppWebView> {
 
   @override
   void initState() {
+    eventBus.on<OnNewWebViewPopEvent>().listen((event) {
+      _distroyLastWebView();
+    });
+
     _createNewWebView(
         widget.initialUrlRequest?.url.toString() ?? 'about:blank');
 
